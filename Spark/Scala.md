@@ -136,10 +136,8 @@ def sum(nums: Int*) = {
     }
     result
 }
-
 sum(1, 2, 3, 4, 5)
 sum(1 to 5: _*)
-
 // 递归方式， nums其实是 Range.Inclusive 类型
 def sum2(nums: Int*): Int = {
     if(nums.length == 0) 0
@@ -734,8 +732,6 @@ class Person(val name: String) extends Valid {
     def getName = name
 }
 ```
-
-
 
 ### 2.4.9 trait 的构造机制
 
