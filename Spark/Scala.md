@@ -744,7 +744,7 @@ Student's constructor
 
 ### 2.4.10 trait 字段的初始化
 
-- **trait 与 class 的唯一区别**： trait 没有接收参数的构造函数；
+- **trait 与 class 的唯一区别**： trait 没有接收参数的构造函数，有时需要提前初始化 trait 字段
 
 ```scala
 trait SayHello {
@@ -755,8 +755,8 @@ trait SayHello {
 class Person extends SayHello {
     override val msg: String = "init"
 }
-val p = new Person() // 报错，因为会先执行 println(msg.toString) ，再执行 Person 中的赋值操作，所以会报空指针异常
-// 方式一: 提前赋值
+val p = new Person() // 报错，因为会先执行 println(msg.toString)【此时msg还没有赋值】，再执行 Person 中的赋值操作，所以会报空指针异常
+// 方式一: 提前初始化
 class Person 
 val p = new {
     val msg: String = "init"
@@ -797,7 +797,267 @@ class Person(val name: String) extends Logger {
 
 # 3. Scala 函数式编程
 
+> Java 是面向对象编程语言，方法不能脱离类和对象独立存在；Scala 是既可以面向对象，又可以面向过程的语言。
+>
+> **注**： **方法** 是对象或者类中的， **函数** 是独立存在的。
+
+
+
+## 3.1  将函数赋值给变量
+
+- Scala 语法规定，将函数赋值给变量时，必须在函数后面加上空格和下划线：
+
+```scala
+def sayHello(name: String) = println("Hello, " + name)
+val sayHelloFunc = sayHello _
+```
+
+
+
+## 3.2 匿名函数
+
+- 可以直接定义函数之后，将函数赋值给某个变量，或者其他函数的参数中;
+- (参数名： 参数类型)  => 函数体
+
+```scala
+val sayHelloFunc = (name: String) => println("Hello, " + name)
+```
+
+
+
+## 3.3 高阶函数
+
+- Scala 可以将函数作为参数传入其他函数，接收其他函数的被称为高阶函数
+
+```scala
+// 参数类型高阶函数
+val sayHelloFunc = (name: String) => println("Hello, " + name)
+def greeting(func: (String) => Unit, name: String) {func(name)}
+greeting(sayHelloFunc, "hello")
+```
+
+```scala
+Array(1,2,3,4,5).map((num: Int) => num * num)
+```
+
+```scala
+// 返回值类型高阶函数
+def getGreetingFunc(msg: String) = (name: String) => println(msg + ", " + name)
+val greetingFunc = getGreetingFunc("Hello")
+greetingFunc("leo")
+```
+
+
+
+## 3.4 高阶函数的类型推断
+
+- 高阶函数可以自动推断出参数类型，不需要写明类型
+- 对于只有一个参数的函数，可以省去小括号
+- 如果仅有一个参数在右侧的函数体内只使用一次，可以将接受参数省略，将参数用_来替代
+
+```scala
+def greeting(func: (String) => Unit, name: String) {func(name)}
+greeting((name: String) => println("Hello, " +name), "Li")
+greeting((name) => println("Hello, " + name), "Li") // 不需要写明匿名函数的参数类型
+greeting(name => println("Hello, " + name), "Li") // 一个参数，可以去除匿名函数的参数括号
+def triple(func: (Int) => Int) = {func(3)}
+triple(num => 5 * num)
+triple(5 * _) // 匿名函数仅有一个参数，并且在函数体内只使用一次，可以将参数省略('num =>'省略)，将参数用_替代(使用 _ 替代 num)
+```
+
+
+
+## 3.5 Scala的常用高阶函数
+
+### 3.5.1 map
+
+- 对传入的每个元素都进行映射，返回一个处理后的元素
+
+```scala
+//以下四种效果一样
+Array(1,2,3,4,5).map(2 * _)
+Array(1,2,3,4,5).map(num => 2 * num)
+Array(1,2,3,4,5).map((num) => num * 2)
+Array(1,2,3,4,5).map((num: Int) => num * 2)
+```
+
+### 3.5.2 foreach
+
+- 对传入的每个元素都进行处理，但是没有返回值
+
+```scala
+(1 to 9).map("*" * _).foreach(println _)
+```
+
+### 3.5.3 filter
+
+- 对传入的每个元素都进行判断，如果为 ture, 则会保留
+
+```scala
+(1 to 20).filter(_ % 2 == 0)
+```
+
+### 3.5.4 reduceLeft
+
+- 从左侧元素开始，进行reduce操作，即先对元素1 和元素 2进行处理，然后将结果与元素3处理，再将结果与元素4处理，依次类推，即为reduce
+
+```scala
+(1 to 5).reduceLeft(_ * _) // 相当于： 1*2*3*4*5
+```
+
+### 3.5.5 sortWith
+
+- 对元素进行俩俩相比，进行排序
+
+```scala
+Array(3,2,5,4,10,1).sortWith(_ < _)
+```
+
+
+
+## 3.6 闭包
+
+> 函数在变量不处于其有效作用域时，还能够对变量进行访问，即为闭包
+
+```scala
+def getGreetingFunc(msg: String) = (name: String) => println(msg + ", " + name) 
+val greetingFuncHello = getGreetingFunc("hello")
+val greetingFuncHi = getGreetingFunc("Hi")
+```
+
+> 两次调用 getGreetingFunc 函数，传入不同的 msg， 并创建不同的函数返回，然而，msg 只是 getGreetingFunc 函数的局部变量，却在 getGreetingFunc 执行完之后，还可以继续存在于创建的函数中，这种变量超出了其作用域，还可以继续使用，即为闭包。
+
+- Scala 通过为每个函数创建对象来实现闭包，实际上对于 getGreetingFunc 函数创建的函数，msg是作为函数对象的变量存在的，因此每个函数才可以拥有不同的 msg。
+
+
+
+## 3.7 SAM 转换
+
+> 将Java方法转换为Scala的匿名函数
+
+- 在Java中，不支持直接将函数传入一个方法作为参数，唯一的办法就是定义一个实现了某个接口的类的实例对象，该对象只有一个方法；而这些接口都只有单个抽象方法，也就是 single abstract method （SAM）
+- 由于 Scala 是可以调用Java的代码的，因此当调用Java的某个方法时，可能就不得不创建SAM传递给方法，非常麻烦；但是Scala 又是支持直接传递函数的。此时就可以使用Scala提供的，在调用Java方法时，使用的功能，SAM转换，即将SAM转为Scala函数
+- 要使用SAM转换，需要使用Scala提供的特性，隐式转换
+
+```scala
+import javax.swing._
+import java.awt.event._
+val button = new JButton("Click")
+button.addActionListener(new ActionLister {
+    override def actionPerformed(event: ActionEvent) {
+        println("Click Me!!!")
+    }
+})
+// SAM
+implicit def getActionListener(actionProcessFunc: (ActionEvent) => Unit) = new ActionListener{
+    override def actionPerformed(event: ActionEvent) {
+        actionProcessFunc(event)
+    }
+}
+button.addActionListener((event: ActionEvent) => println("Click Me!!!"))
+```
+
+​	
+
+## 3.8 Currying 函数
+
+- 将原来接收的两个参数的一个函数，转换为两个函数，第一个函数接收原来的第一个参数，然后返回接收原先第二参数的第二个函数
+- 在函数调用过程中，就变成了两个函数连续两个函数调用的形式
+
+```scala
+def sum(a: Int, b: Int) = a + b
+sum(1, 1)
+// Currying 函数
+def sum2(a: Int) = (b: Int) => a + b
+sum2(1)(1)
+// Currying 函数简写
+def sum3(a: Int)(b: Int) = a + b
+```
+
+
+
+## 3.9 return
+
+- 在 Scala 中， return 用于在匿名函数中返回值给包含匿名函数的带名函数，并作为带名函数的返回值 。
+- 使用 return 的匿名函数，是必须给出返回类型的，否则无法通过编译
+
+```scala
+def greeting(name: String) = {
+    def sayHello(name: String): String = {
+        return "Hello, " + name
+    }
+    sayHello(name)
+}
+```
+
 # 4. Scala 高级特性
+
+## 4.1 函数式编程之集合操作
+
+### 4.1.1 Scala 的集合体系结构
+
+- Scala 中的集合体系主要包括：Iterable、Seq、Set、Map。其中 Iterable 是所有集合 trait 的根 trait。这个结构与Java的集合体系非常相似。
+- Scala 中的集合分成可变和不可变两类集合，分别对应 `scala.collection.mutable` 和 `scala.collection.immutable` 两个包
+- Seq 下包含了 Range、ArrayBuffer、List 等 trait。其中 Range 就代表了一个序列，通常可以使用 `1 to 10` 语句产生一个 Range。 ArrayBuffer类似于Java的ArrayList。
+
+### 4.1.2 List
+
+- List 代表一个不可变的数组
+- List 的 head 和 tail ， head 代表List的第一个元素， tail 代表第一个元素之后的所有元素
+- List 的特殊操作符 `::` 可以将 head与tail合并成一个list， `0::list` 
+
+```scala
+def decorator(list: List[Int], prefix: String) {
+    if(list != Nil) {
+        println(prefix + list.head)
+        decorator(list.tail, prefix)
+    }    
+}
+```
+
+### 4.1.3 LinkedList
+
+- LinkedList 代表一个可变的列表，使用 `elem` 可以引用其头部(head)，使用 `next` 可以引用其尾部( tail )
+
+```scala
+// 使用while循环将 list中的每个元素乘以 2
+var list = scala.collection.mutable.LinkedList(1,2,3,4,5)
+var currentList = list
+while(currentList != Nil) {
+	currentList.elem = currentList.elem * 2
+    currentList = currentList.next
+}
+// 使用while循环将 list 中每隔一个元素乘以2
+var list = scala.collection.mutable.LinkedList(1,2,3,4,5)
+var currentList = list
+var first = true
+while(currentList != Nil && currentList.next != Nil) {
+    if(first) {
+        currentList.elem = currentList.elem * 2
+        first = false
+    }
+    currentList = currentList.next.next
+    currentList.elem = currentList.elem * 2
+}
+```
+
+### 4.1.4 Set
+
+- Set 代表一个没有重复元素的集合
+- HashSet 不能保证插入的顺序
+- LinkedHashSet 可以保证插入顺序
+- SortedSet 会自动根据 key 来进行排序
+
+### 4.1.5 集合的函数式编程
+
+-  map: 
+- flatMap、reduce、reduceLeft、foreach
+
+### 4.1.6 函数式编程综合案例：统计多个文本内的单词总结
+
+
+
+
 
 # 5. Scala Actor 并发编程
 
