@@ -313,7 +313,7 @@ for((name, age) <- nameAges) println(name + ":" +age)
 ```scala
 class HelloWorld {
     private var name = "L"
-    def sayHello() {
+    def sayHello() = {
         println("Hello, " + name)
     }  // 调用此函数时，可以加 () ， 也可以不加 ()
     def getName = name  // 调用此函数时，不能加 ()
@@ -321,7 +321,7 @@ class HelloWorld {
 
 val hw = new HelloWorld()
 hw.sayHello()
-hw.syaHello
+hw.sayHello
 print(hw.getName)
 ```
 
@@ -356,6 +356,8 @@ class Student {
     }
 }
 ```
+
+
 
 ## 2.2 object
 
@@ -454,6 +456,8 @@ object Season extends Enumeration {
 Season(0)
 Season.withName("spring")
 ```
+
+
 
 ## 2.3 继承
 
@@ -573,14 +577,243 @@ class Student extends Person{
 }
 ```
 
-
-
-
-
 ## 2.4 Trait
 
+### 2.4.1  将 trait 作为接口使用
+
+- 与 JAVA 中的接口类似；
+- 在 triat 中定义抽象方法，scala 中没有 **implement** 关键字，一律使用 **extends**，实现抽象方法时不需要使用 **override**；
+- scala 不支持多继承 **class**，但是支持多重继承 **trait**， 但是需要使用 **with**:
+
+```scala
+trait HelloTrait {
+    def sayHello(name: String)
+}
+trait MakeFriendsTrait {
+    def makeFriends(p: Person)
+}
+class Person(var name: String) extends HelloTrait with MakeFriendsTrait with Cloneable with Serializable {
+    def sayHello(otherName: String) = println("Hello, " + otherName + ", I'm " + name)
+	def makeFriends(p: Person) = println("Hello, my name is " + name + ", your name is " + p.name)
+}
+```
+
+### 2.4.2 在 trait 中定义具体方法
+
+- 可以定义一些通用的功能方法
+
+```scala
+trait Logger {
+    def log(message: String) = println(message)
+}
+class Person(val name: String) extends Logger {
+    def makeFriends(p: Person) {
+        println(p.name)
+        log(p.name)
+    }
+}
+```
+
+### 2.4.3 在 trait 中定义具体字段
+
+- 继承 trait 的类会自动获得 trait 中定义的 field， 但是与继承 class 不同： 如果继承 class 获取 field， 实际是定义在父类中，子类只是获得了父类中 field 的引用；而继承 trait 获取的field，就被直接添加到了实现类中。
+
+```scala
+trait Person {
+    val eyeNum: Int = 2
+}
+class Student(val name: String) extends Person {
+    def sayHello = println("Hello, I'm " + name + ", I hava " + eyeNum + " eyes.")
+}
+```
+
+### 2.4.4  在 trait 中定义抽象字段
+
+- 继承的抽象字段必须得赋值
+
+```scala
+trait SayHello {
+    val msg: String
+    def sayHello(name: String) = println(msg + ", " + name)
+}
+class Person(val name: String) extends SayHello {
+    val msg: String = "hello"
+    def makeFriends(p:Person) {
+        sayHello(p.name)
+        println(name)
+    }
+}
+```
+
+### 2.4.5  作为实例对象混入 trait
+
+- 在创建类的对象时，指定该对象混入某个trait， 这样，就只有这个对象混入该trait的方法，而类的其他对象没有
+
+```scala
+trait Logged {
+    def log(msg: String) {}
+}
+trait MyLogger extends Logged {
+   override def log(msg: String) {
+        println("log:" + msg)
+    }   
+}
+class Person(val name: String) extends Logged {
+    def sayHello {
+        println("Hi, I'm " + name)
+        log("sayHello is invoked!")
+    }
+}
+
+val p1 = new Person("Li")
+p1.sayHello
+val p2 = new Person("Zhang") with MyLogger  // 给实例对象动态混入 trait
+p2.sayHello
+```
+
+### 2.4.6 trait 调用链（责任链模式）
+
+- Scala 中支持让类继承多个trait后，依次调用多个 trait 中的同一个方法， **多个 trait 的同一个方法中，在最后都要执行 super.方法**；
+- 类中调用多个trait中都有的这个方法时，会**从右往左**依次执行trait中的方法，形成一个调用链
+- 相当于设计模式中的责任链模式
+
+```scala
+trait Handler {
+    def handler(data: String) {}
+}
+trait DataValidHandler extends Handler {
+    override def handler(data: String) {
+        println("check data: " + data)
+        super.handler(data) // 关键语句
+    }
+}
+trait SignatureValidHandler extends Handler {
+    override def handler(data: String) {
+        println("check signature: " + data)
+        super.handler(data)
+    }
+}
+class Person(val name: String) extends SignatureValidHandler with DataValidHandler {
+    def sayHello = {
+        println("Hello, " + name)
+        handler(name)
+    }
+}
+
+val p = new Person("Li")
+p.sayHello
+```
+
+### 2.4.7  在 trait 中覆盖抽象方法
+
+- 在 trait 中覆盖父 trait 的抽象方法
+- 覆盖时，如果使用了 `super.方法` 的代码，则无法通过编译，因为 `super.方法` 会去调用父 trait的抽象方法，此时子 trait 的该方法还是会被认为是抽象的，如果想要通过编译，必须给子 trait 方法加上 `abstract override`。
+
+```scala
+trait Logger {
+    def log(msg: String)
+}
+trait MyLogger extends Logger {
+    abstract override def log(msg: String) {super.log(msg)}
+}
+```
+
+### 2.4.8 混合使用 trait 的具体方法和抽象方法（模板设计模式）
+
+- 可以在 trait 中让具体方法依赖于抽象方法，而抽象方法则放到继承trait的类中实现（模板设计模式）
+
+```scala
+trait Valid {
+    def getName: String
+    def valid: Boolean = {
+        getName == "leo"
+    }
+}
+class Person(val name: String) extends Valid {
+    println(valid)
+    def getName = name
+}
+```
 
 
+
+### 2.4.9 trait 的构造机制
+
+- 在 Scala 中，trait 也有构造代码，也就是 trait 中不在任何方法中的代码，会被自动放进 构造代码中；
+- 继承了 trait 的类的构造机制如下： 
+  - 父类的构造函数执行
+  - trait 的构造代码执行，多个trait **从左到右** 依次执行
+  - 构造trait时会先构造父 trait，如果多个 trait 继承同一个父 trait，则父 trait 只会构造依次
+  - 所有 trait 构造完毕之后，子类的构造函数才会执行
+
+```scala
+class Person {println("Person's constructor")}
+trait Logger {println("Logger's constructor")}
+trait MyLogger extends Logger {println("MyLogger's constructor")}
+trait TimeLogger extends Logger {println("TimeLogger's constructor")}
+class Student extends Person with MyLogger with TimeLogger {
+    println("Student's constructor")
+}
+
+Out:
+Person's constructor
+Logger's constructor
+MyLogger's constructor
+TimeLogger's constructor
+Student's constructor
+```
+
+### 2.4.10 trait 字段的初始化
+
+- **trait 与 class 的唯一区别**： trait 没有接收参数的构造函数；
+
+```scala
+trait SayHello {
+    val msg: String
+    println(msg.toString)
+}
+// 错误
+class Person extends SayHello {
+    override val msg: String = "init"
+}
+val p = new Person() // 报错，因为会先执行 println(msg.toString) ，再执行 Person 中的赋值操作，所以会报空指针异常
+// 方式一: 提前赋值
+class Person 
+val p = new {
+    val msg: String = "init"
+} with Person with SayHello
+// 方式二
+class Perosn extends {
+    val msg:String = "init"
+} with SayHello {}
+//方式三： 使用 lazy
+trait SayHello {
+    lazy val msg: String = null
+    println(msg.toString)
+}
+class Person extends SayHello {
+    override lazy val msg:String = "init"
+}
+```
+
+### 2.4.11 trait 继承类
+
+- trait 也可以继承自 class， 此时这个class就会成为所有继承该 trait 的类的父类
+
+```scala
+class MyUtil {
+    def printMessage(msg: String) = println(msg)
+}
+trait Logger extends MyUtil {
+    def log(msg: String) = printMessage("log: " + msg)
+}
+class Person(val name: String) extends Logger {
+    def sayHello {
+        log("Hi, I'm " + name)
+        printMessage("Hi, I'm " + name)
+    }
+}
+```
 
 
 # 3. Scala 函数式编程
