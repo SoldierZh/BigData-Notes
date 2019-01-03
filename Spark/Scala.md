@@ -179,26 +179,21 @@ val a = new Array[Int](10)  // [Int] 表示 泛型,每个元素会初始化为 0
 a(0)     // 访问数组元素
 a(0) = 1 // 设置数组元素
 a.length // 数组长度
-
 val a = Array("Hello", "World") // 元素类型自动推断，等同于 val a = Array.apply("Hello", "World")
 ```
+
 - **ArrayBuffer** (对应 Java 中的 ArrayList， 长度可变的数组)
 ```scala
 import scala.collection.mutable.ArrayBuffer
-
 val b = ArrayBuffer[Int]() // 创建
-
 b += 1  			//  += 添加一个元素
 b += (2,3,4,5) 		// += 添加多个元素
 b ++= Array(6,7,8,9)// ++= 添加其他集合中的所有元素
-
 b.insert(5, 6)		// 在 index = 5 的位置插入元素 6
 b.insert(5,7,8,9,10) // 在 index = 5 的位置插入多个元素
-
 b.remove(1)        // 移除 index=1 的元素
 b.remove(1，3) 	  // 移除 index=1 及其之后的 3个元素
 b.trimEnd(5)  	// 可以从尾部截断指定个数的元素
-
 b.toArray    // ArrayBuffer 转换成 Array  
 a.toBuffer   // Array 转换成 ArrayBuffer
 ```
@@ -316,7 +311,6 @@ class HelloWorld {
     }  // 调用此函数时，可以加 () ， 也可以不加 ()
     def getName = name  // 调用此函数时，不能加 ()
 }
-
 val hw = new HelloWorld()
 hw.sayHello()
 hw.sayHello
@@ -337,7 +331,6 @@ class Student {
     val age = 10 // 生成 public 的 getter 方法
     private var gender = 1  // 生成 private 的setter 和 getter 方法
 }
-
 val student = new Student
 print(student.name)
 student.name_=("L")
@@ -371,7 +364,6 @@ object Person {
     println("this is a person object!") // 只会执行一次
     def getEyeNum = eyeNum
 }
-
 Person.getEyeNum
 ```
 
@@ -386,7 +378,6 @@ object Person {
     private val eyeNum = 2
     def getEyeNum = eyeNum
 }
-
 class Person(val name: String, val age: Int) {
     def sayHello = println(name + ": " + age + ": " + Person.eyeNum)
 }
@@ -400,7 +391,6 @@ class Person(val name: String, val age: Int) {
 abstract class Hello(var message: String) {
     def sayHello(name: String): Unit
 }
-
 object HelloImpl extends Hello("hello") {
     override def sayHello(name: String) = {
         println(message + "," + name)
@@ -415,7 +405,6 @@ object HelloImpl extends Hello("hello") {
 
 ```scala
 val a = Array(1,2,3,4) //其实是调用了 object Array 的 apply 方法
-
 // 自定义 apply 方法
 class Person(val name: String)
 object Person {
@@ -502,7 +491,6 @@ p.getClass == classOf[Student] // true
 class Person
 class Student extends Person
 val p: Person = new Student
-
 p match {
     case p1: Peron => println("it's Person's object")
     case p2 => println("unknown type")
@@ -553,7 +541,6 @@ def greeting(p:Person {def sayHello: String}) {
 abstract class Person(val name: String) {
     def sayHello: Unit
 }
-
 class Student(name: String) extends Person(name) {
     def sayHello: Unit = println("Hello, " + name)
 }
@@ -569,7 +556,6 @@ class Student(name: String) extends Person(name) {
 abstract class Person {
     val name: String
 }
-
 class Student extends Person{
     val name: String = "bob"
 }
@@ -662,7 +648,6 @@ class Person(val name: String) extends Logged {
         log("sayHello is invoked!")
     }
 }
-
 val p1 = new Person("Li")
 p1.sayHello
 val p2 = new Person("Zhang") with MyLogger  // 给实例对象动态混入 trait
@@ -697,7 +682,6 @@ class Person(val name: String) extends SignatureValidHandler with DataValidHandl
         handler(name)
     }
 }
-
 val p = new Person("Li")
 p.sayHello
 ```
@@ -750,7 +734,6 @@ trait TimeLogger extends Logger {println("TimeLogger's constructor")}
 class Student extends Person with MyLogger with TimeLogger {
     println("Student's constructor")
 }
-
 Out:
 Person's constructor
 Logger's constructor
