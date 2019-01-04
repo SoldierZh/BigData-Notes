@@ -996,9 +996,9 @@ def greeting(name: String) = {
 
 ### 4.1.1 Scala 的集合体系结构
 
-- Scala 中的集合体系主要包括：Iterable、Seq、Set、Map。其中 Iterable 是所有集合 trait 的根 trait。这个结构与Java的集合体系非常相似。
+- Scala 中的集合体系主要包括：**Iterable**、**Seq**、**Set**、**Map**。其中 **Iterable*** 是所有集合 trait 的根 trait。这个结构与Java的集合体系非常相似。
 - Scala 中的集合分成可变和不可变两类集合，分别对应 `scala.collection.mutable` 和 `scala.collection.immutable` 两个包
-- Seq 下包含了 Range、ArrayBuffer、List 等 trait。其中 Range 就代表了一个序列，通常可以使用 `1 to 10` 语句产生一个 Range。 ArrayBuffer类似于Java的ArrayList。
+- **Seq** 下包含了 **Range**、**ArrayBuffer**、**List** 等 trait。其中 Range 就代表了一个序列，通常可以使用 `1 to 10` 语句产生一个 Range。 ArrayBuffer类似于Java的ArrayList。
 
 ### 4.1.2 List
 
@@ -1050,16 +1050,461 @@ while(currentList != Nil && currentList.next != Nil) {
 
 ### 4.1.5 集合的函数式编程
 
--  map: 
-- flatMap、reduce、reduceLeft、foreach
+-  map、flatMap、reduce、reduceLeft、foreach、zip
 
-### 4.1.6 函数式编程综合案例：统计多个文本内的单词总结
+### 4.1.6 函数式编程综合案例：统计多个文本内的单词总数
 
+```scala
+val line1 = "hello world"
+val line2 = "hello you"
+val lines = List(line1, line2)
+lines.flatMap(_.split(" ")).map((_, 1)).map(_._2).reduceLeft(_ + _)
+```
 
+## 4.2  模式匹配
 
+- **match case** 类似Java中的 **switch case** 语法
+- Scala 模式匹配除了可以对值进行匹配， 还可以对类型、Array、List 等进行匹配
 
+### 4.2.1 基础语法
 
-# 5. Scala Actor 并发编程
+>  match{case 值 => 语法}` ，如果值是下划线，则代表了不满足以上所有情况下的默认情况如何处理，只要一个 case 条件满足并处理了，就不会继续向下匹配其他case分枝。
 
+- 基本语法
+
+```scala
+def judgeGrade(grade: String) {
+    grade match {
+        case "A" => println("Excellent")
+        case "B" => println("Good")
+        case "C" => println("Just so so")
+        case _ => println("you need to work harder")
+    }
+}
+```
+
+- 带有if守卫的模式匹配，相当于对匹配条件进双重过滤，进一步细化
+
+```scala
+def judgeGrade(name: String, grade: String) {
+    grade match {
+        case "A" => println("Excellent")
+        case "B" => println("Good")
+        case "C" => println("Just so so")
+        case _ if name == "Li" => println(name + ", come on")
+        case _ => println("you need to work harder")
+    }
+}
+```
+
+- 在模式匹配中进行变量赋值：将模式匹配的默认情况，下划线，替换成一个变量名，此时模式匹配语法就会将要匹配的值赋值给这个变量，从而可以在后面的处理语句中使用要匹配的值
+
+```scala
+def judgeGrade(name: String, grade: String) {
+    grade match {
+        case "A" => println("Excellent")
+        case "B" => println("Good")
+        case "C" => println("Just so so")
+        case _grade if name == "Li" => println(name + ", come on")
+        case _grade => println("you need to work harder, you just got " + _grade)
+    }
+}
+```
+
+### 4.2.2 对类型进行模式匹配
+
+- 可以直接匹配类型，而不是值
+- `case 变量:类型 => 代码` 
+
+```scala
+import java.io._
+def processException(e: Exception) {
+    e match {
+        case e1: IllegalArgumentExcetion => println("argument is illegal")
+        case e2: FileNotFoundException => println("cannot find file!!!")
+        case _: Exception => println("other exception")
+    }
+}
+```
+
+### 4.2.3 对Array和List进行模式匹配
+
+- 对Array进行模式匹配，匹配带有指定元素的数组、带有指定个数元素的数组、以某元素开头的数组；
+- 对List进行模式匹配，与Array类似，但是需要使用List特有的 :: 操作符
+
+```scala
+def greeting(arr: Array[String]) {
+    arr match {
+        case Array("Leo") => println("Hello, Leo!") // 带有指定元素的数组
+        case Array(p1, p2, p3) => println("people: " + p1 + ", " + p2 + ", " + p3) // 带有指定个数元素的数组
+        case Array("Wang", _*) => println("Hello Wang!") //  以某元素开头的数组 
+    }
+}
+def greeting(list: List[String]) {
+    list match {
+        case "Leo" :: Nil => println("Hello, Leo!")
+        case p1 :: p2 :: p3 :: Nil => println("people: " + p1 + ", " + p2 + ", " + p3)
+        case "Wang" :: tail => println("Hello Wang!")
+        case _ => println("Who are you?") 
+    }
+}
+```
+
+### 4.2.4 case class 与模式匹配
+
+- Scala 提供了一种特殊的类，用 `case class` 进行声明， 有点类似Java中的 JavaBean，只定义 field，并由 Scala 编译时自动提供getter和setter方法，但是没有method。
+- case class 的主构造函数接收的参数通常不需要使用var或者val修饰，Scala 会自动使用 val 修饰，如果指定var修饰，还是会按照 var
+- Scala自动为 case class 定义了伴生对象，也就是 object， 并且定义了 apply() 方法
+
+```scala
+class Person
+case class Teacher(name: String, subject: String) extends Person
+case class Student(name: String, classroom: String) extends Person
+//
+def judgeIdentify(p: Person) {
+    p match {
+        case Teacher(name, subject) => println("Teacher, name = " + name + ", subject = " + subject) 
+        case Student(name, classroom) => println("Student, name = " + name + ", classroom = " + classroom)
+        case _ => println("Illegal access")
+    }
+}
+```
+
+### 4.2.5 Option 与模式匹配
+
+- Scala 的一种特殊类型，**Option**， 有两种值：Some（有值）、None（没有值）
+-  Option 通常会用于模式匹配中，用于判断某个变量是否有值
+
+```scala
+val grades = Map("Leo" -> "A", "Jack" -> "B")
+def getGrade(name: String) {
+    val grade = grades.get(name)
+    grade match {
+        case Some(grade) => println("your grade is " + grade)
+        case None => println("not found")
+    }
+}
+```
+
+## 4.3 泛型
+
+> 与Java的泛型概念一样
+
+### 4.3.1 泛型类
+
+```scala
+class Student[T](val localId: T) {
+    def getSchoolId(hukouId: T) = "S-" + hukouId + "-" + localId
+}
+ val student0 = new Student(123)
+ val student1 = new Student[Int](123)
+ val student2 = new Student[String]("123")
+```
+
+### 4.3.2 泛型函数
+
+```scala
+def getCard[T](content: T) = {
+    if(content.isInstanceOf[Int]) "card:001, " + content
+    else if(content.isInstanceOf[String]) "card: this is your card, " + content
+    else "card: " + content
+}
+getCard[String]("hello")
+getCard("hello")
+```
+
+### 4.3.3 上边界 Bounds
+
+- 类似 Java 的 `T extends Person`
+
+```scala
+class Person(val name: String) {
+    def sayHello = println("Hello, I'm " + name)
+    def makeFriends(p: Person) {
+        sayHello
+        p.sayHello
+    }
+}
+class Student(name: String) extends Person(name)
+class Party[T <: Person](p1: T, p2: T) {
+    def play = p1.makeFriends(p2)
+}
+// test
+val person = new Person("person")
+val student = new Student("student")
+val party = new Party(person, student)
+party.play
+```
+
+### 4.3.4 下边界 Bounds
+
+- 类似 Java 的 `T super Father`
+
+```scala
+class Father(val name: String)
+class Child(name: String) extends Father(name) 
+def getIDCard[R >: Child](person: R) {
+    if(person.getClass == classOf[Child]) println("tell us your father's name")
+    else if(person.getClass == classOf[Father]) println("sign your name")
+    else println("sorry")
+}
+```
+
+### 4.3.5 View Bounds
+
+- 上下边界Bounds的加强版，支持可以对类型进行隐式转换，将指定的类型进行**隐式转换**后，再判断是否在边界指定类型范围内
+
+```scala
+import scala.language.implicitConversions
+class Person(val name: String) {
+    def sayHello = println("Hello, I'm " + name)
+    def makeFriends(p: Person) {
+        sayHello
+        p.sayHello
+    }
+}
+class Student(name: String) extends Person(name)
+class Dog(val name: String) {
+    def sayHello = println("Wang! I'm" + name)
+}
+// 隐式类型转换，将Dog转为Person
+implicit def dog2person(dog: Object): Person = {
+    if(dog.isInstanceOf[Dog]) {
+        val _dog = dog.asInstanceOf[Dog]
+        new Person(_dog.name)
+    } else {
+        Nil
+    }  
+} 
+class Party[T <% Person](p1: T, p2: T) {
+    def play = p1.makeFriends(p2)
+}
+val student = new Student("student")
+val dog = new Dog("dog")
+```
+
+### 4.3.6 Context Bounds
+
+- 一种特殊的Bounds，它会根据泛型类型的声明，比如 **T :类型** 要求必须存在一个类型为**类型[T]**的隐式值。
+
+```scala
+class Calculator[T: Ordering] (val number1: T, val number2: T) {
+    def max(implicit order: Ordering[T]) = {
+        if(order.compare(number1, number2)>0)
+        	number1
+        else
+        	number2
+    }
+}
+```
+
+### 4.3.7 Manifest Context Bounds
+
+- 如果要实例化一个**泛型数组**， 就必须使用 Manifest Context Bounds。如果数组元素类型为 T， 需要为类或者函数定义 `[T: Manifest]` 泛型类型，这样才能实例化  `Array[T]` 这种泛型数组
+
+```scala
+class Meat(val name: String) 
+class Vegetable(val name: String)
+def packageFood[T: Manifest](food: T*) = {
+    val foodPackage = new Array[T](food.length)
+    for(i <- 0 until food.length)
+    	foodPackage(i) = food(i)
+    foodPackage
+}
+packageFood(new Meat("m1"), new Meat("m2"), new Meat("m3"))
+ packageFood(new Vegetable("p1"), new Vegetable("p2"), new Vegetable("p3"))
+```
+
+### 4.3.8 协变和逆变
+
+- Java 中 ArrayList<String> 不是 ArrayList<Object> 的子类， Scala 的协变和逆变可以解决这个问题
+
+```scala
+class Master
+class Professional extends Master
+//协变： 向子类兼容
+class Card[+T](val name: String) 
+def enterMeeting(card: Card[Master]) {
+    println("welcome " + card.name)
+}
+enterMeeting(new Card[Master]("master"))
+enterMeeting(new Card[Professional]("professional"))
+//逆变：向父类兼容
+class Card[-T](val name: String)
+def enterMeeting(card: Card[Professional]) {
+    println("Welcome " + card.name)
+}
+enterMeeting(new Card[Master]("master"))
+enterMeeting(new Card[Professional]("professional"))
+```
+
+### 4.3.9 Existential Type
+
+```scala
+Array[T] forSome{type T}
+Array[_]
+```
+
+## 4.4 隐式转换与隐式参数
+
+- 允许手动指定，将某种类型的对象转换成其他类型的对象。
+
+- Scala 隐式转换，其核心就是定义**隐式转换函数**， 即 **implicit conversion function**，只要在编写的程序内引入，就会被Scala自动使用。Scala会根据隐式转换函数的签名，在程序中使用到隐式转换函数接收的参数类型定义的对象时，会自动将其传入隐式转换函数，转换为另外类型的对象并返回。
+
+- 隐式转换函数命名无所谓，因为通常不会由用户手动调用，而是由Scala进行调用，但是如果使用隐式转换，则需要对隐式转换函数进行**导入**。通常建议将隐式转换函数命名为 ”one2one“的形式。
+
+### 4.4.1 隐式转换
+
+> 使用 **implicit** 关键字开头的函数，最好定义函数返回类型
+
+```scala
+import scala.language.implicitConversions 
+class SpecialPerson(val name: String)
+class Student(val name: String)
+class Older(val name: String)
+// 隐式转换函数
+implicit def object2SpecialPerson(obj: Object): SpecialPerson = {
+    if(obj.getClass == classOf[Student]) {
+        val stu = obj.asInstanceOf[Student]
+        new SpecialPerson(stu.name)
+    } else if(obj.getClass == classOf[Older]) {
+        val older = obj.asInstanceOf[Older]
+        new SpecialPerson(older.name)
+    } else {
+        Nil
+    }
+}
+var ticketNumber = 0
+def buySpecialTicket(p: SpecialPerson) = {
+    ticketNumber += 1
+    "T-" + ticketNumber
+}
+// test
+val student = new Student("student")
+buySpecialTicket(student)  // 隐式转换
+```
+
+### 4.4.2 隐式转换加强现有类型
+
+```scala
+import scala.language.implicitConversions
+class Man(val name: String)
+class Superman(val name: String) {
+    def emitLaser = println("emit a laser!")
+}
+implicit def man2superman(man: Man): Superman = new Superman(man.name)
+// test
+val zhang = new Man("zhang")
+zhang.emitLaser  // 调用隐式转换函数
+```
+
+### 4.4.3 导入隐式转换函数
+
+- Scala 默认会使用两种隐式转换， 一种是源类型，或者目标类型的伴生对象内的隐式转换函数；一种是当前程序作用域内的可以用唯一标识符表示的隐式转换函数。
+- 如果隐式转换函数不在上述两种情况下，那么则需要手动使用 `import` 语法引入某个包下的隐式转换函数。
+
+### 4.4.4 隐式转换的发生时机
+
+1. 调用某个函数，但是给函数传入的参数的类型，与函数定义的接收参数类型不匹配；
+2. 使用某个类型的对象，调用某个方法并不存在于该类型时
+3. 使用某个类型的对象，调用某个方法，虽然该类型有这个方法，但是给方法传入的参数类型，与方法定义的接收参数的类型不匹配（与第一种类似）
+
+### 4.4.5 隐式参数
+
+- 在函数或者方法中，定义一个用 `implicit` 修饰的参数，此时 Scala 会尝试找到一个指定类型的，用 `implicit` 修饰的对象，即隐式值，并注入参数
+- Scala 会在两个范围内查找： 一种是当前作用域内可见的val或者var定义的隐式变量； 一种是隐式参数类型的伴生对象内的隐式值
+
+```scala
+class SignPen {
+    def write(content: String) = println(content)
+}
+implicit val signPen = new SignPen
+def signForExam(name: String)(implicit signPen: SignPen) {
+    signPen.write(name + " come to exam in time.")
+}
+```
+
+# 5.  Actor 并发编程入门
+
+- Actor 类似Java中**多线程编程**，但与之不同的是： Scala的Actor尽可能地避免锁和共享状态，从而避免多线程并发时出现资源争用的情况，从而提升多线程编程的性能，同时还可以避免死锁等一系列传统多线程编程的问题。
+- Spark 中使用的分布式多线程框架，是 Akka。 Akka 也实现了类似 Scala Actor 的模型，其核心概念同样也是Actor。
+- **注意** ： 从Scala的2.11.0版本开始，Scala的Actors库已经过时了。早在Scala2.10.0的时候，默认的actor库即是Akka。
+
+## 5.1 Actor 的 Hello World
+
+- Scala 中的 **Actor trait** 类似 Java 中的 **Runnable**
+-  需继承**Actor** triat 并重写 **act**方法
+-  使用 `!` 符号 向actor 发送消息
+-  在 actor内部使用 `receive` 和模式匹配接收消息
+
+```scala
+import scala.actors.Actor
+class HelloActor extends Actor {
+    def act() {
+        while(true) {
+            receive{
+                case name: String => println("Hello, " + name)
+            }
+        }
+    }
+}
+val helloActor = new HelloActor
+helloActor.start()
+// 发送消息
+helloActor ! "wang"
+```
+
+## 5.2 收发 case class 类型消息
+
+- 相当于给 Actor 发送一个 JavaBean
+
+```scala
+case class Login(username: String, password: String)
+case class Register(username: String, password: String)
+class UserManagerActor extends Actor {
+    def act() {
+        while(true) {
+            receive {
+                case Login(username, password) => println("login, username: " + username + ", password: " + password)
+                case Register(username, password) => println("resiger, username: " + username + ", password: " + password)
+            }
+        }
+    }
+}
+val userManagerActor = new UserManagerActor
+userManagerActor.start()
+userManagerActor ! Register("leo", "1234")
+userManagerActor ! Login("leo", "1234")
+```
+
+## 5.3 Actor 之间互相收发消息
+
+- actor1 给 actor2 发送消息时，包含自己的引用，actor2 可以根据 actor 引用直接回复消息
+
+```scala
+case class Message(content: String, sender: Actor)
+class LeoTelephoneActor extends Actor {
+    def act() {
+        while(true) {
+            receive {
+                case Message(content, sender) => {println("leo telephone: " + content); sender ! "please call me after 10 mins."}
+            }
+        }
+    }
+}
+class JackTelephoneActor(val leoTelephoneActor: Actor) extends Actor {
+    def act() {
+    	leoTelephoneActor ! Message("Hello, Leo, I'm Jack.", this)
+    	receive {
+            case response: String => println("jack telephone: " + response)
+    	}
+    }
+}
+```
+
+## 5.4 同步消息和 Future
+
+- 默认情况下，消息都是异步的，但是希望同步，可以使用 `!?` 发送消息，例如： `val reply = actor !? message`，阻塞直到获取返回值
+- 如果要异步发送一个消息，在后续要获得消息的返回值，可以使用 Future，即 `!!` , 例如发送消息时： `val future = actor !! message`， 获取返回值： `val reply = future()`
 
 
