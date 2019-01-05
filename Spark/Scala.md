@@ -60,7 +60,7 @@ var b = {print("Hello"); 2*3}
 
 ## 1.9 循环语句 
 
-- **while do** ： 使用与 Java 相同 
+- **while** ： 使用与 Java 相同 
 - **for**：`var n = 10; for(i <- 1 to n) println(i)` 会输出 10，  `var n = 10; for(i <- 1 until n) println(i)` 不会输出10，会忽略下边界， `for (i <- "Hello") println(i)` 会输出每一个字符；
 - 跳出循环语句：Scala 中没有 break 语句， 可以使用 boolean 类型变量、return 或者 Breaks 的break和 breakable；
 ```scala
@@ -996,7 +996,7 @@ def greeting(name: String) = {
 
 ### 4.1.1 Scala 的集合体系结构
 
-- Scala 中的集合体系主要包括：**Iterable**、**Seq**、**Set**、**Map**。其中 **Iterable*** 是所有集合 trait 的根 trait。这个结构与Java的集合体系非常相似。
+- Scala 中的集合体系主要包括：**Iterable**、**Seq**、**Set**、**Map**。其中 **Iterable** 是所有集合 trait 的根 trait。这个结构与Java的集合体系非常相似。
 - Scala 中的集合分成可变和不可变两类集合，分别对应 `scala.collection.mutable` 和 `scala.collection.immutable` 两个包
 - **Seq** 下包含了 **Range**、**ArrayBuffer**、**List** 等 trait。其中 Range 就代表了一个序列，通常可以使用 `1 to 10` 语句产生一个 Range。 ArrayBuffer类似于Java的ArrayList。
 
@@ -1068,7 +1068,7 @@ lines.flatMap(_.split(" ")).map((_, 1)).map(_._2).reduceLeft(_ + _)
 
 ### 4.2.1 基础语法
 
->  match{case 值 => 语法}` ，如果值是下划线，则代表了不满足以上所有情况下的默认情况如何处理，只要一个 case 条件满足并处理了，就不会继续向下匹配其他case分枝。
+>  `match{case 值 => 语法}` ，如果值是下划线，则代表了不满足以上所有情况下的默认情况如何处理，只要一个 case 条件满足并处理了，就不会继续向下匹配其他case分枝。
 
 - 基本语法
 
@@ -1216,6 +1216,7 @@ getCard("hello")
 ### 4.3.3 上边界 Bounds
 
 - 类似 Java 的 `T extends Person`
+- `<:`
 
 ```scala
 class Person(val name: String) {
@@ -1239,6 +1240,7 @@ party.play
 ### 4.3.4 下边界 Bounds
 
 - 类似 Java 的 `T super Father`
+- `>:`
 
 ```scala
 class Father(val name: String)
@@ -1253,6 +1255,7 @@ def getIDCard[R >: Child](person: R) {
 ### 4.3.5 View Bounds
 
 - 上下边界Bounds的加强版，支持可以对类型进行隐式转换，将指定的类型进行**隐式转换**后，再判断是否在边界指定类型范围内
+- `<%`
 
 ```scala
 import scala.language.implicitConversions
@@ -1286,6 +1289,7 @@ val dog = new Dog("dog")
 ### 4.3.6 Context Bounds
 
 - 一种特殊的Bounds，它会根据泛型类型的声明，比如 **T :类型** 要求必须存在一个类型为**类型[T]**的隐式值。
+- `T: Ordering`
 
 ```scala
 class Calculator[T: Ordering] (val number1: T, val number2: T) {
@@ -1301,6 +1305,7 @@ class Calculator[T: Ordering] (val number1: T, val number2: T) {
 ### 4.3.7 Manifest Context Bounds
 
 - 如果要实例化一个**泛型数组**， 就必须使用 Manifest Context Bounds。如果数组元素类型为 T， 需要为类或者函数定义 `[T: Manifest]` 泛型类型，这样才能实例化  `Array[T]` 这种泛型数组
+- `T: Manifest` 
 
 ```scala
 class Meat(val name: String) 
@@ -1318,6 +1323,7 @@ packageFood(new Meat("m1"), new Meat("m2"), new Meat("m3"))
 ### 4.3.8 协变和逆变
 
 - Java 中 ArrayList<String> 不是 ArrayList<Object> 的子类， Scala 的协变和逆变可以解决这个问题
+- `+T`  `-T`
 
 ```scala
 class Master
