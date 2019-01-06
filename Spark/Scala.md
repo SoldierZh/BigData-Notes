@@ -1514,3 +1514,547 @@ class JackTelephoneActor(val leoTelephoneActor: Actor) extends Actor {
 - 如果要异步发送一个消息，在后续要获得消息的返回值，可以使用 Future，即 `!!` , 例如发送消息时： `val future = actor !! message`， 获取返回值： `val reply = future()`
 
 
+# 6. Scala 进阶
+
+## 6.1 Scaladoc 使用
+
+> Scala api 文档：class、object、function、method、implicit。
+
+- [Sacala在线文档](https://www.scala-lang.org/api/current/)
+
+1. O和C，分别代表某个类的伴生对象和伴生类；
+2. 标记为 implicit 的函数，表示隐式转换。
+
+## 6.2 跳出循环语句的3中方法
+
+- 基于 Boolean 类型的控制变量
+
+```scala
+var flag = true
+var res = 0
+var n = 0
+// while 循环
+while(flag) {
+    res += n
+    n += 1
+    if(n == 5) {
+        flag = false
+    }
+}
+// for 循环
+flag = true
+res = 0
+n = 10
+for(i <- 0 until 10 if flag) {
+    res += i
+    if(i == 4) flag = false
+}
+```
+
+- 在嵌套函数中使用 return
+
+```scala
+def add_outer() = {
+    var result = 0 
+    def add_inner() {
+        for(i <- 0 until 10) {
+            if(i == 5) {
+                return
+            }
+            result += i
+        }
+    }
+    add_inner()
+    result
+}
+```
+
+- 使用Breaks类的 break
+
+```scala
+import scala.util.control.Breaks._
+var res = 0
+breakable {
+    for(i <- 0 until 10) {
+        if(i == 5) {
+            break
+        }
+        res += i
+    }
+} // break 之后会到到这一行
+```
+
+## 6.3 多维数组
+
+- `ofDim()`
+
+```scala
+// 指定行与列
+val multiArray = Array.ofDim[Int](3, 4)
+multiArray(0)(0) = 12
+// 不规则多维数组
+val multiArray = new Array[Array[Int]](3)
+multiArray(0) = new Array[Int](5)
+multiArray(1) = new Array[Int](7)
+multiArray(2) = new Array[Int](9)
+multiArray(1)(6) = 11
+```
+
+## 6.4  Java List 与 Scala ArrayBuffer 的隐式转换
+
+```scala
+import scala.collection.JavaConversions.bufferAsJavaList
+import scala.collection.mutable.ArrayBuffer
+import java.util.List
+val arrayBuffer = ArrayBuffer("A", "B", "C")
+def printList(list: List[String]) {
+    var i = 0
+    while(i < list.size) {
+        println(list.get(i))
+        i += 1
+    }
+}
+printList(arrayBuffer) // 隐式转换， ArrayBuffer(Scala) ==> List(Java)
+import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.mutable.Buffer
+val arrayList = new ArrayList[String]
+arrayList.add("a")
+arrayList.add("b")
+val buffer: Buffer[String] = arrayList // 隐式转换， ArrayList(Java) ==> Buffer(Scala)
+```
+
+## 6.5 Tuple zip 操作
+
+- 将两个 Array 合并为一个 Array，新的 Array 的每个元素是一个 Tuple 类型
+
+```scala
+val students = Array("Leo", "Jack", "Jen") // Array[String]
+val scores = Array(80, 90, 100) // Array[Int]
+val studentScores = students.zip(scores) // Array[(String, Int)] ， 每个元素是一个 Tuple
+```
+
+- 如果Array 的元素是一个 Tuple， 调用 `Array.toMap()` 可将Array转换为 Map
+
+```scala
+val map = studentScores.toMap
+```
+
+## 6.6  Java Map 与 Scala Map 隐式转换
+
+```scala
+import scala.collection.JavaConversions.mapAsScalaMap
+val javaScores = new java.util.HashMap[String, Int]()
+javaScores.put("A", 80)
+javaScores.put("B", 90)
+javaScores.put("C", 100)
+val scalaScores: scala.collection.mutable.Map[String, Int] = javaScores  // 隐式转换 java Map ==> Scala Map
+import scala.collection.JavaConversions.mapAsJavaMap
+val javaMap: java.util.Map[String,Int] = scalaScores // 隐式转换 scala Map ==> Java Map
+```
+
+## 6.7 扩大内部类作用域的两种方法
+
+- 内部类依赖于外部类的实例对象，而不是依赖外部类
+
+```scala
+class Class {
+    class Student(val name: String) {}
+    val students = new ArrayBuffer[Student]
+    def register(name: String) = {
+        new Student(name)
+    }
+}
+val c1 = new Class
+val leo = c1.register("leo")
+c1.students += leo
+//
+val c2 = new Class
+val jack = c2.register("jack")
+s1.students += jack // 报错
+```
+
+### 6.7.1 伴生对象
+
+- 类似 Java 中的 static 内部类
+
+```scala
+object Class {
+    class Student(val name: String)
+}
+class Class {
+    val students = new ArrayBuffer[Class.Student]
+    def register(name: String) = {
+        new Class.Student(name)
+    }
+}
+val c1 = new Class
+val leo = c1.register("leo")
+c1.students += leo
+//
+val c2 = new Class
+val jack = c2.register("jack")
+c1.students += jack // 正确执行
+```
+
+### 7.7.2  类型投影
+
+- 使用 `#` 操作符 
+
+```scala
+class Class {
+    class Student(val name: String)
+    val students = new ArrayBuffer[Class#Student]  // 类型投影
+    def register(name: String) = {
+        new Student(name)
+    }
+}
+val c1 = new Class
+val leo = c1.register("leo")
+c1.students += leo
+//
+val c2 = new Class
+val jack = c2.register("jack")
+c1.students += jack // 正确执行
+```
+
+## 6.8 内部类获取外部类的引用
+
+- `outer =>` ： outer 是外部类的引用，可以自定义名称
+
+```scala
+class Class(val name: String) { outer =>
+    class Student(val name: String) {
+        def printMyself = "Hello, I'm " + name + ", outer name is " + outer.name
+    }
+    def register(name: String) = {
+        new Student(name)
+    }
+}
+val c1 = new Class("c1")
+val leo = c1.register("leo")
+leo.printMyself
+```
+
+## 6.9 重写 field 的提前定义
+
+1. 子类的构造函数调用父类的构造函数
+2. 父类的构造函数初始化 field
+3. **父类的构造函数使用 field 执行其他构造代码，但是此时其他构造代码如果使用了该 field，而且 field 要被子类重写，那么它的 getter 方法会被重写，返回 0 （Int）**
+4. 子类的构造函数再执行，重写field
+5. 但是此时子类从父类继承的其他构造代码，已经出现了错误
+
+```scala
+class Student {
+    val classNumber: Int = 10
+    val classScores: Array[Int] = new Array[Int](classNumber)
+}
+class PEStudent extends Student{override val classNumber: Int = 3}
+// test
+val s1 = new Student
+s1.classNumber   // 10
+s1.classScores.length  // 10
+val s2 = new PEStudent
+s2.classNumber // 3
+s2.classScores.length // 0
+```
+
+- **提前定义** : 在父类构造函数执行前，先执行子类的构造函数中的部分代码。
+
+```scala
+class PEStudent extends {
+    override val classNumber: Int = 3
+} with Student
+val s3 = new PEStudent
+s3.classNumber // 3
+s3.classScores.length // 3
+```
+
+## 6.10 Scala 继承层级
+
+- Scala 的 trait 和 class 都默认继承自一些 Scala 的根类，具有一些基础方法，类似Java中的 Object 类；
+- Scala 中最顶端的两个 trait 是 **Nothing trait** 和 **Null trait**,  **Null** 唯一的对象就是 **null**；
+- **Any class** 类继承了 **Nothing trait**；
+- **Anyval trait** 和 **AnyRef class** 继承了 **Any class**；
+- **Any class** 类似Java中的**Object**， 其定义了 **isInstanceOf** 和 **asInstanceOf** 等方法，以及 **equals**、**hashCode** 等对象的基本方法；
+- **AnyRef class** 增加了一些多线程的方法，比如 **wait**、**notify/notifyAll** 、**synchronized** 等。
+
+## 6.11 对象的相等性
+
+- 重写 `equals` 和 `hashCode` 方法， 类似Java中的操作
+
+## 6.12 I/O操作
+
+### 6.12.1 读取文件
+
+> ``scala.io.Source.fromFile(fileName: String, decode: String)` 方法打开文件， `Source.close`关闭文件。`
+
+- 使用 `source.getLines` 返回迭代器 （**getLines 只能调用一次**）
+
+```scala
+import scala.io.Source
+val source = Source.fromFile("E://test.txt", "UTF-8")
+val lineIterator = source.getLines
+for(line <- lineIterator) println(line)
+source.close
+```
+
+- 将 `Source.getLines` 返回的迭代器转换成数组
+
+```scala
+import scala.io.Source
+val source = Source.fromFile("E://test.txt", "UTF-8")
+val lines = source.getLines.toArray
+for(line <- lines) println(line)
+source.close
+```
+
+- 调用 `Source.mkString` ，返回文本中所有内容
+
+```scala
+import scala.io.Source
+val source = Source.fromFile("E://test.txt", "UTF-8")
+val lines = source.mkString
+println(lines)
+source.close
+```
+
+- 读取文件字符
+
+```scala
+import scala.io.Source
+val source = Source.fromFile("E://test.txt", "UTF-8")
+for(c <- source) print(c)
+```
+
+### 6.12.2 读取 URL 的字符（网页）
+
+```scala
+import scala.io.Source
+val htmlSource = Source.fromURL("https://www.baidu.com", "UTF-8")
+for(c <- htmlSource) print(c)
+```
+
+### 6.12.3  读取字符串中的字符
+
+```scala
+import scala.io.Source
+var strSource = Source.fromString("Hello World!")
+for(c <- strSource) print(c)
+```
+
+### 6.12.4 结合Java IO流 读取任意格式文件
+
+```scala
+import java.io._
+val file = new File("E://test.txt")
+val bytes = new Array[Byte](file.length.toInt)
+val fis = new FileInputStream(file)
+fis.read(bytes)
+fis.close()
+```
+
+### 6.12.5 结合 Java IO 流写文件
+
+```scala
+import java.io._
+val fis = new FileInputStream(new File("E://test.txt"))
+val fos = new FileOutputStream(new File("E://test2.txt"))
+val buffer = new Array[Byte](fis.available)
+fis.read(buffer)
+fos.write(buffer, 0, buffer.length)
+fis.close()
+fos.close()
+```
+
+### 6.12.6 递归遍历子目录
+
+```scala
+def getSubdirIterator(dir: File): Iterator[java.io.File] = {
+    val childDirs = dir.listFiles.filter(_.isDirectory)
+    childDirs.toIterator ++ childDirs.toIterator.flatMap(getSubdirIterator _)
+}
+val iterator = getSubdirIterator(new File("E://"))
+for(d <- iterator) println(d)
+```
+
+### 6.12.7 序列化与反序列化
+
+```scala
+@SerialVersionUID(42L) class Person(val name: String) extends Serializable
+val leo = new Person("leo")
+import java.io._
+// 序列化
+val oos = new ObjectOutputStream(new FileOutputStream("E://test.obj"))
+oos.writeObject(leo)
+oos.close()
+// 反序列化
+val ois = new ObjectInputStream(new FileInputStream("E://test.obj"))
+val leo2 = ois.readObject().asInstanceOf[Person]
+```
+
+## 6.13 偏函数
+
+- 偏函数是 **PartialFunction[A, B]**类的一个实例，类似 Map 的功能，这个类有两个方法，**apply()** 、**isDefinedAt()** 
+- **apply()** ： 直接调用可以通过函数体内的 case 进行匹配，返回结果
+- **isDefinedAt()** ：可以返回一个输入是否跟任何一个case语句匹配，true 或者 false
+
+```scala
+val getStudentGrade: PartialFunction[String, Int] = {
+    case "Leo" => 90
+    case "Jack" => 91
+    case "Marry" => 92
+}
+getStudentGrade("Leo")      	// 90
+getStudentGrade.apply("Leo")  //90 这两种调用效果一样
+getStudentGrade.isDefinedAt("Leo") // true
+```
+
+## 6.14 执行外部命令
+
+- 执行Scala 所在进程之外的程序
+
+```scala
+import sys.process._
+"ls -al .." !  // linux
+"calc" ! // windows
+```
+
+## 6.15 正则表达式
+
+- 使用 `String.r` 方法获得 `scala.util.matching.Regex` 类的对象；
+- 使用 `findAllIn`方法匹配所有满足的字符串
+- 使用 `findFirstIn` 方法可以获得第一个匹配的字符串
+- 使用 `replaceAllIn` 方法可以将匹配正则的部分替换成指定字符串
+- 使用 `replaceFirstIn` 方法可以将第一个匹配正则的部分替换成指定字符串
+
+```scala
+var pattern1 = "[a-z]+".r // 调用 String 类的 r 方法，此时返回 scala.util.matching.Regex 类型的对象
+for(matchString <- pattern1.findAllIn(str)) println(matchString)
+```
+
+## 6.16 提取器
+
+- `unapply` 方法： 接收一个字符串，解析成一个对象的各个字段，并封装成一个 Tuple 返回。
+
+```scala
+class Person(val name: String, val age: Int)
+object Person {
+    def apply(name: String, age: Int) = new Person(name, age)
+    def unapply(str: String) = {
+        val splitIndex = str.indexOf(" ")
+        if(splitIndex == -1) None
+        else Some((str.substring(0, splitIndex), str.substring(splitIndex+1)))
+    }
+}
+val Person(name, age) = "leo 25"
+name
+age
+```
+
+- **样例类的提取器**， 样例类相当于 JavaBean，**样例类默认提供`apply` `unapply` 方法** 
+
+```scala
+case class Person(name: String, age: Int)
+val p = Person("leo", 25)
+p match {
+    case Person(name, age) => println(name + ": " + age)
+}
+```
+
+- **单个参数的提取器**：解析出来一个字段，是没有办法放在tuple中，
+
+```scala
+class Person(val name: String)
+object Person {
+    def unapply(input: String): Option[String] = Some(input)
+}
+val Person(name) = "leo"
+```
+
+## 6.17 注解
+
+- 需要继承 `Annotation trait`
+
+```scala
+class Test extends annotation.Annotation // 定义注解
+@Test   // 使用注解
+class MyTest
+```
+
+- 常用注解
+
+```scala
+@volatile var name = "leo"  // 轻量级的 Java 多线程并发安全控制，相当于Java的 volatile 关键字
+@transient var name = "leo" // 不会序列化，相当于 Java 的 transient 关键字
+@SerialVersionUID(value)	// 标记序列化版本号
+@throws(classOf[Exception]) def test() {} // 给方法标记要抛出的异常
+@varargs def test(args: String*) {} // 标记方法接收的是变长参数
+@BeanProperty	// 标记生成JavaBean风格的getter和setter方法
+@BooleanBeanProperty	// 标记生成is风格的getter方法，用于boolean类型的field
+@deprecated(message="")  // 让编译器提示警告
+@unchecked	// 让编译器提示类型转换警告
+@native	//标注用C语言实现的本地方法
+```
+
+## 6.18 XML 操作
+
+- 获得 XML 文档对象
+
+```scala
+val books = <books><book>my first scala book</book></books> // 返回 scala.xml.Elem 类型的
+val books = <book>book1</book><book>book2</book> // 返回 scala.xml.NodeBuffer 类型
+```
+
+- XML节点类型： **Node** 是所有XML节点类型的父类，两个重要子类是 **Text**、**Elem**
+  - **Elem** 表示一个 XML 节点
+  - **NodeSeq** 表示一个元素序列
+  - 可以通过 **NodeBuffer** 类型手动创建一个节点序列
+
+```scala
+val booksBuffer = new scala.xml.NodeBuffer
+booksBuffer += <book>book1<book>
+booksBuffer += <book>book2<book>
+```
+
+- XML 节点属性：`Elem.attributes`
+
+```scala
+val book = <book id="1" price="3.4">my first scala book</book>
+book.attributes("id")
+for(attr <- book.attributes) println(attr)
+```
+
+- XML 中嵌入 scala 代码
+
+```scala
+import scala.xml._
+val books = Array("book1", "book2")
+val booksXml = <books><book>{ books(0) }</book><book>{ books(0) }</book></books>
+val booksXml2 = <books>{ for(book <- books) yield <book>{ book }</book> }</books>
+// XML 属性嵌入scala代码
+val booksXml3 = <books><book name={ books(0) }></book></books>
+```
+
+- XML修改元素
+
+```scala
+val books = <books><book>book1</book></books>
+val booksCopy = books.copy(child = books.child ++ <book>book2</book>) // 添加元素
+import scala.xml._
+val book = <book id="1">boo1</book>
+val bookCopy = book % Attribute(null, "id", "2", Null) // 修改一个属性
+val bookCopy = book % Attribute(null, "id", "2", Attribute(null, "price", "10.0", Null)) // 添加属性
+```
+
+- XML加载和写入外部文档
+
+```scala
+import scala.xml._
+import java.io._
+val books = XML.loadFile("E://test.xml") // 加载XML文件
+val books = XML.load(new FileInputStream("E://test.xml"))
+val books = XML.load(new InputStreamReader(new FileInputStream("E://test.xml"), "UTF-8"))
+// 将xml对象写入 XML 文件
+XML.save("E://test2.xml", books)
+```
+
