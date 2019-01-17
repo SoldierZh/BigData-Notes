@@ -2,7 +2,7 @@
 
 ## 1.1 环境搭建
 
-- [Scala官网](https://www.scala-lang.org/download/)  下载 [scala-2.12.8.msi](https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.msi) 
+- [Scala官网](https://www.scala-lang.org/download/)  下载 [scala-2.12.8.msi ](https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.msi ) (Windows)     [scala-2.12.8.tgz](https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz) (Linux)
 
 - 安装 Scala 并配置 环境变量 ， 前提需要安装 JDK 1.8
 
