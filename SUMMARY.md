@@ -11,6 +11,7 @@
   * [HDFS](Hadoop\HDFS\6. HDFS.md)
   * [MapReduce](Hadoop\MapReduce\MapReduce.md)
   * [YARN](Hadoop\YARN\YARN.md)
+  * [Hive](ETL\Hive\Hive.md)
 * [Spark](Spark/README.md)
   * [Scala](Spark/Scala.md)
   * [Spark 基础](Spark/Spark.md)

@@ -30,7 +30,7 @@
   - **RMContainer**: RMContainer维护了一个Container运行周期，包括从创建到运行结束的整个过程。
   - **RMNode**: 维护了一个 NodeManager的生命周期。
 - **安全管理模块**： RM 自带了非常全面的权限管理机制，主要由 **ClientToAMSecretManager**、**ContainerTokenSecretManager**、**ApplicationTokenSecretManager** 等模块。
-- **资源分配模块**： 此模块主要涉及一个组件—— **ResourceScheduler**，即资源调度器，它按照一定的约束条件（比如队列容量限制等）将集群中的资源分配给各个应用程序，当前主要考虑CPU和内存资源。YARN自带了一个批处理资源调度器——FIFO和两个多用户调度器——Fair Scheduler 和 Capacity Scheduler。
+- **资源分配模块**： 此模块主要涉及一个组件—— **ResourceScheduler**，即资源调度器，它按照一定的约束条件（比如队列容量限制等）将集群中的资源分配给各个应用程序，当前主要考虑CPU和内存资源。YARN自带了一个批处理资源调度器——**FIFO**和两个多用户调度器——**Fair Scheduler** 和 **Capacity Scheduler**。
 
 ### 1.3 ResourceManager 事件和事件处理器
 
@@ -226,3 +226,62 @@
 > ACL
 
 ## 9. 容错机制
+
+## 10. 资源调度器
+
+### 10.1 HOD 调度器
+
+> HOD (hadoop on demand) 调度器是一个在共享物理集群上管理若干个 Hadoop 集群的工具，用户可以通过 HOD 调度器在一个共享物理集群上快速搭建若干个独立的虚拟Hadoop集群，以满足不同的用途。 Hadoop2.0 中已经不包含 HOD 调度器。
+
+
+
+### 10.3. YARN 资源调度器的基本架构
+
+#### 10.3.1 基本架构
+
+>  **FifoScheduler**、**FairScheduler**、**CapacityScheduler**  --> **ResourceScheduler** --> **YarnScheduler** --> **EventHandler**
+
+- 可插拔式组件
+- 事件处理器
+
+#### 10.3.2 资源表示模型
+
+> 当前YARN支持内存和CPU两种资源类型的管理和分配。
+
+#### 10.3.3 资源调度模型
+
+1. **双层资源调度模型**：第一层中， ResourceManager 中的资源调度器将资源分配给各个 ApplicationMaster； 第二层中，ApplicationMaster 再进一步将资源分配给它内部的各个任务。 本章所介绍的资源调度器主要关注第一层的调度问题。
+2. **资源保证机制**：增量资源分配机制，优先为应用程序预留一个节点上的资源直到累计释放的空闲资源满足应用程序需求。
+3. **资源分配算法**：
+
+
+#### 10.3.4 资源抢占模型
+
+
+### 10.4. YARN 层级队列管理机制
+
+### 10.5. Capacity Scheduler
+
+> [配置详情](https://blog.csdn.net/carlislelee/article/details/8822374)
+
+> 按照资源分配队列：配置多个队列，每个队列配置整个集群计算资源的一部分，通常按照百分比的形式配置，每个队列中按照FIFO进行作业调度，具体包含以下几个特性：
+
+- **计算能力保证**。支持多个队列，某个作业可以被提交到某一个队列中。每个队列会配置一定比例的计算资源，且所有提交到队列中的作业共享该队列中的资源。
+- **灵活性**。空闲资源会分配给那些未达到资源使用上限的队列，当某个未达到资源上限的队列需要资源时，一旦其他队列出现了空闲资源，便会分配给这个队列。
+- **支持优先级**。在每个队列中的调度器是 FIFO。
+
+### 10.6. Fair Scheduler
+
+> 按照用户分配队列：没有设置 allocation file，则会动态创建用户队列；或者在allocation file中明确配置用户队列。通常按照权重进行分配，不等同于百分比。
+
+> A和B两个用户，当A启动一个作业时，会占用全部资源，然后，当B提交一个作业时，此时A和B的两个作业分别占用一半的资源，然后B又提交了一个作业，则B的两个作业会分别占用整个资源的1/4，A的作业依然占用整个资源的1/2。
+
+
+> 通过指定 *yarn.resourcemanager.scheduler.class* 为 *org.apache.hadoop.yarn.server.resourcemanag
+> er.scheduler.fair.FairScheduler.* 
+
+> 队内作业调度策略可以使FIFO，也可以是DRF(Dominant Resource Fairness)
+
+- **Preempiton** : Preemtion 默认是关闭的，如果启用的话，会kill掉那些占用的资源超过指定份额的container，这样会降低整体效率。
+
+### 10.7. 其他资源调度器介绍
