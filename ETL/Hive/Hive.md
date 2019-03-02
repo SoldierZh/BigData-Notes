@@ -679,7 +679,6 @@ ALTER TABLE table_name SET SKEWED LOCATION (col_name1="location1" [, col_name2="
 > 增加或者删除约束（主键、外键）
 
 ```
-
 ALTER TABLE table_name ADD CONSTRAINT constraint_name PRIMARY KEY (column, ...) DISABLE NOVALIDATE;
 ALTER TABLE table_name ADD CONSTRAINT constraint_name FOREIGN KEY (column, ...) REFERENCES table_name(column, ...) DISABLE NOVALIDATE RELY;
 ALTER TABLE table_name DROP CONSTRAINT constraint_name;
@@ -732,7 +731,7 @@ ALTER TABLE table_name_2 EXCHANGE PARTITION (partition_spec, partition_spec2, ..
 
 #### 4.4.2.4  Recover Partitions (MSCK REPAIR TABLE)
 
-> Hive 将表的分区列表存储在元数据中，如果通过fs命令直接将新的分区添加到HDFS上，或者将分区别直接从HDFS上删除， Hive的元数据是意识不到的，除非执行 `ALTER TABLE table_name ADD/DROP PARTITION ` 相关的命令。或者，用户可以执行下面的元数据检测命令：
+> Hive 将表的分区列表存储在元数据中，如果通过fs命令直接将新的分区添加到HDFS上，或者将分区直接从HDFS上删除， Hive的元数据是意识不到的，除非执行 `ALTER TABLE table_name ADD/DROP PARTITION ` 相关的命令。或者，用户可以执行下面的元数据检测命令：
 
 ```
 MSCK [REPAIR] TABLE table_name [ADD/DROP/SYNC PARTITIONS];
@@ -1252,7 +1251,7 @@ CLUSTER BY (column_name) INTO number BUCKETS;
 > Hive在实际操作中一般的流程：
 
 1. Create 一张表
-2. Load 数据到这张表中 （E）
+2. 提取数据到这张表中 （E）
 3. SELECT 语句查询需要的数据 （T），一般是结合 Create as Select 语句将查询的结果直接保存到一张子表中
 4. 使用 truncate 语句删除子表中的数据
 5. 或者使用 drop 语句删除子表
@@ -1393,7 +1392,7 @@ mapreduce.output.fileoutputformat.compress.codec=org.apache.hadoop.io.compress.S
 - 按列存储：ORC、PARQUET
 - ORC和PARQUET文件格式通过 insert 语句加载数据
 - 存储空间大小：TEXTFILE > PARQUET > ORC，所以一般使用ORC
-- **在实际项目中，hive表的数据通常使用的存储格式为 orcfile / qarquet; 数据压缩格式为 snappy**
+- **在实际项目中，hive表的数据通常使用的存储格式为 orcfile / parquet; 数据压缩格式为 snappy**
 
 
 > Hive 优化
