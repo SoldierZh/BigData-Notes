@@ -1152,9 +1152,9 @@ def greeting(list: List[String]) {
 
 ### 4.2.4 case class 与模式匹配
 
-- Scala 提供了一种特殊的类，用 `case class` 进行声明， 有点类似Java中的 JavaBean，只定义 field，并由 Scala 编译时自动提供getter和setter方法，但是没有method。
+- Scala 提供了一种特殊的类，用 `case class`  进行声明， 有点类似Java中的 JavaBean，只定义 field，并由 Scala 编译时自动提供getter和setter方法，但是没有method。
 - case class 的主构造函数接收的参数通常不需要使用var或者val修饰，Scala 会自动使用 val 修饰，如果指定var修饰，还是会按照 var
-- Scala自动为 case class 定义了伴生对象，也就是 object， 并且定义了 apply() 方法
+- **Scala自动为 case class 定义了伴生对象，也就是 object， 并且定义了 apply() 方法**
 
 ```scala
 class Person
@@ -1185,6 +1185,11 @@ def getGrade(name: String) {
     }
 }
 ```
+
+### 4.2.6 对类型匹配和对 case class 匹配不一样
+
+- 类型匹配：`case e1: IllegalArgumentExcetion => code`
+- case class 匹配： `case t@Teacher(name, subject) => code` 
 
 ## 4.3 泛型
 
@@ -1951,7 +1956,7 @@ name
 age
 ```
 
-- **样例类的提取器**， 样例类相当于 JavaBean，**样例类默认提供`apply` `unapply` 方法** 
+- **样例类的提取器**， 样例类相当于 JavaBean，**样例类默认提供`apply unapply` 方法** 
 
 ```scala
 case class Person(name: String, age: Int)
@@ -2057,4 +2062,15 @@ val books = XML.load(new InputStreamReader(new FileInputStream("E://test.xml"), 
 // 将xml对象写入 XML 文件
 XML.save("E://test2.xml", books)
 ```
+
+# 7. Scala 语法糖总结
+
+https://colobu.com/2016/01/04/Scala-magic-functions/
+
+## 7.1 apply & unapply
+
+## 7.2 update
+
+与`apply`方法类似，`update`也是一个魔法方法。对于一个实例`a`, Scala可以将`a.update(x,y)`简化为`a(x)=y`。
+
 
