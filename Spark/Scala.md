@@ -2063,14 +2063,4 @@ val books = XML.load(new InputStreamReader(new FileInputStream("E://test.xml"), 
 XML.save("E://test2.xml", books)
 ```
 
-# 7. Scala 语法糖总结
-
-https://colobu.com/2016/01/04/Scala-magic-functions/
-
-## 7.1 apply & unapply
-
-## 7.2 update
-
-与`apply`方法类似，`update`也是一个魔法方法。对于一个实例`a`, Scala可以将`a.update(x,y)`简化为`a(x)=y`。
-
 
