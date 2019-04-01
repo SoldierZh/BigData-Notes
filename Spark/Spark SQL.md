@@ -194,7 +194,6 @@ TreeNode 的基本操作：
 
 - 核心操作
   - **eval**: 实现了 Expression 对应的处理逻辑，也是其他模块调用该 Expression 的主要接口。
-  -  
   - doGenCode
 
 - 等价性判断
@@ -359,9 +358,9 @@ Object <= TreeNode <= QueryPlan <= LogicalPlan
 
 ### 4.2.1 LeafNode 类型的 LogicalPlan
 
-LeafNode 类型的 LogicalPlan 节点对应数据表和命令（Command）相关的逻辑。
+LeafNode 类型的 LogicalPlan 节点对应数据表（**Relation**）和命令（**Command**）相关的逻辑。
 
-RunnableCommand 是直接运行的命令，主要涉及12种情形，包括 Database 、Table 、View、DDL、Function、Resource相关命令。
+**RunnableCommand** 是直接运行的命令，主要涉及12种情形，包括 Database 、Table 、View、DDL、Function、Resource相关命令。
 
 ### 4.2.2 UnaryNode 类型的 LogicalPlan
 
@@ -373,7 +372,7 @@ RunnableCommand 是直接运行的命令，主要涉及12种情形，包括 Data
 
 - 脚本相关的转换操作（ScriptTransformation），用特定的脚本对输入数据进行转换。
 - Object 相关的操作（ObjectConsumer）
-- 基本操作算子 （basicLogicalOperators），涉及 Project、Filter、Sort 等各种常见的关系算子。
+- 基本操作算子 （basicLogicalOperators），涉及 **Project、Filter、Sort** 等各种常见的关系算子。
 
 ### 4.2.3 BinaryNode 类型的 LogicalPlan 
 
@@ -388,6 +387,154 @@ BinaryNode类型节点种比较复杂且重要的是 **Join** 算子
 **Union** 算子的使用场景比较多。
 
 ## 4.3 AstBuilder 机制： Unresolved LogicalPlan 生成
+
+- 一条sql的解析过程调用栈如下：
+
+```
+SparkSession.sql(sqlTest: String)
+SparkSession.sessionState.sqlParser.parsePlan(sqlText)
+SparkSqlParser.parsePlan(sqlText) -> AbstractSqlParser.parsePlan(sqlText)
+SparkSqlParser.parse(sqlText) -> AbstractSqlParser.parse(sqlText)
+```
+
+其中 `SparkSqlParser` 继承了抽象类 `AbstractSqlParser` ，这里涉及到两个核心函数：`parse()` 和 `parsePlan()`。
+
+
+-  `AbstractSqlParser.parsePlan(sqlText)` 实际为核心驱动函数，由输入的 sqlText 生成对应的 LogicalPlan 对象，其中会调用三个主要的函数 `AbstractSqlParser.parse(sqlText)` 、`SqlBaseParser.singleStatement()`、`astBuilder.visitSingleStatement()`：
+
+```scala
+  override def parsePlan(sqlText: String): LogicalPlan = parse(sqlText) { parser =>
+      // parser 对象是 parse(sqlText) 中构建的语法分析器对象
+      // astBuilder 实际为 一个访问者对象，通过 visitSingleStatement() 对生成的语法树进行访问，将接收的 语法树对象 转换为 LogicalPlan 对象
+    astBuilder.visitSingleStatement(parser.singleStatement()) match {
+      case plan: LogicalPlan => plan
+      case _ =>
+        val position = Origin(None, None)
+        throw new ParseException(Option(sqlText), "Unsupported SQL statement", position, position)
+    }
+  }
+```
+
+-  `AbstractSqlParser.parse(sqlText)`主要功能是根据传入的sql语句构建对应的语法分析器对象
+
+```scala
+protected def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
+    // 构建词法分析器对象, SqlBaseLexer 由 ANTLR4 根据 SqlBase.g4 中定义的语法自动生成
+    val lexer = new SqlBaseLexer(new UpperCaseCharStream(CharStreams.fromString(command)))
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ParseErrorListener)
+    val tokenStream = new CommonTokenStream(lexer)
+    // 构建语法分析器对象，SqlBaseParser 也由 ANTLR4 根据 SqlBase.g4 中定义的语法自动生成
+    val parser = new SqlBaseParser(tokenStream)
+    parser.addParseListener(PostProcessor)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ParseErrorListener)
+    // ...
+    parser.getInterpreter.setPredictionMode(PredictionMode.SLL)
+    // 将语法分析器对象返回
+    toResult(parser)
+    // ...
+}
+```
+
+- `parser.singleStatement()` 将完成实际的语法解析，将传入的sql语句解析并生成一棵语法树，树中的每个节点是一个Context 对象，每个 Context 对象包含一个 `accept(Visitor)` 函数。
+
+```java
+	public final SingleStatementContext singleStatement() throws RecognitionException {
+		SingleStatementContext _localctx = new SingleStatementContext(_ctx, getState());
+		enterRule(_localctx, 0, RULE_singleStatement);
+		try {
+			enterOuterAlt(_localctx, 1);
+			{
+			setState(198);
+			statement();
+			setState(199);
+			match(EOF);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			_errHandler.reportError(this, re);
+			_errHandler.recover(this, re);
+		}
+		finally {
+			exitRule();
+		}
+		return _localctx;
+	}
+```
+
+- `AstBuilder` 类的 `visitSingleStatement()` 是访问整棵抽象语法树的启动接口，对语法树根节点的访问操作会递归访问其子节点（`ctx.statement`会获得其子节点）。`visit(Context)` 函数会反向调用 `Context.accept(Visitor)`函数，每个 Context 对象都有一个 `accept(Visitor)`函数，内部实际调用 `Visitor`对象中对应的的 `visit()` 函数（访问者模式）。
+
+```scala
+  override def visitSingleStatement(ctx: SingleStatementContext): LogicalPlan = withOrigin(ctx) {
+    visit(ctx.statement).asInstanceOf[LogicalPlan]
+  }
+```
+
+- `SparkSqlAstBuilder` 继承了抽象类 `AstBuilder` ，实现了所有 `visitXXX()` 函数，完成实际的转换逻辑，即 Context 到 LogicalPlan的转换。`SqlBaseBaseVisitor` 是 `AstBuilder` 的父类，并且是由 ANTLR4 根据 `SqlBase.g4` 中定义的语法自动生成抽象类，即访问者对象，内部包含了大量访问者函数，即 `visitXXX()`函数，是根据 `SqlBase.g4` 中 `#` 后面的关键字生成的。
+
+```
+SqlBaseBaseVisitor <- AstBuilder <- SparkSqlAstBuilder  
+```
+
+- `SparkSqlParser` 中指定了 Visitor 为 `SparkSqlAstBuilder`
+
+```scala
+class SparkSqlParser(conf: SQLConf) extends AbstractSqlParser {
+  val astBuilder = new SparkSqlAstBuilder(conf)
+  private val substitutor = new VariableSubstitution(conf)
+  protected override def parse[T](command: String)(toResult: SqlBaseParser => T): T = {
+    super.parse(substitutor.substitute(command))(toResult)
+  }
+}
+```
+
+- 通过 `parsePlan(sqlText)` 会最终生成一个 `Unresolved LogicalPlan` 。最终生成的 Unresolved LogicalPlan 完整地涵盖了SQL语句中的信息，如 **UnresolvedRelation** 叶子结点，对应未绑定元数据信息的数据表；**Filter** 节点包含 Condition 表达式，即Where语句后的表达式；**Project** 节点包含了要选取字段的列表，列表中每个表达式的类型都是 NamedExpression 类型。
+- **总结** 
+  - `SparkSqlParser -> AbstractSqlParser` 实际相当于将 sql 解析成 Unresolved LogicalPlan 的驱动，主要由三个步骤组成：1. 根据sql构建对应的语法分析器；2. 根据得到的语法分析器将sql解析生成一棵抽象语法树；3. 语法树中的每个节点是 Context 对象，从根节点递归调用 Context 对象的 visitXXX()，将每个Context 对象转为 LogicalPlan 对象，最终得到一个 Unresolved LogicalPlan树。
+  - `SparkSqlAstBuilder -> AstBuilder -> SqlBaseBaseVisitor` 实际相当于访问者对象，所有由 Context 转为对应的 LogicalPlan 逻辑都在这个对象中的对应visit方法中完成。
+  - 生成 Unresolved LogicalPlan 的过程中，每个节点都会生成一组 Expression 。**Filter** 中可能会包含 GreateThan、UnresolvedAttribute、Literal等Expression；**Project** 会包含 UnresolvedAttribute Expression。
+  - 由 AstBuilder 生成的 Unresolved LogicalPlan 中未绑定任何 元数据信息，主要是 **UnresolvedRelation**和**UnresolvedAttribute**。
+
+## 4.4 Analyzer 机制：Analyzed LogicalPlan 生成
+
+### 4.4.1 Catalog 体系
+
+在 Spark SQL 系统中，Catalog 主要用于各种函数资源信息和元数据信息（数据库、数据表、数据视图、数据分区和函数等）的统一管理。
+
+Spark SQL 中的 Catalog 体系实现以 **SessionCatalog** 为主体，通过 **SparkSession** 提供给外部调用。**SessionCatalog** 封装了底层的元数据信息、临时表信息、视图信息和函数信息。 
+
+Catalog 包含以下几个对象：
+
+- **Configuration** ： Hadoop 的配置信息。
+- **SQLConf**：Spark SQL 的配置信息。
+- **GlobalTempViewManager**：全局的临时视图管理，对应DataFrame中的`createGlobalTempView()` 方法，进行跨 Session 的视图管理。GlobalTempViewManager 是一个线程安全的类，提供了对全局视图的原子操作。
+- **FunctionResourceLoader**：函数资源加载器，在Spark SQL 中除了内置实现的各种函数外，还支持用户自定义的函数和Hive中的各种函数。这些函数主要是通过 Jar 包或者文件类型提供，FunctionResourceLoader 会加载这两种类型的资源并提供函数的调用。
+- **FunctionRegistry**：函数注册接口，用来实现对函数的注册(Register)、查找(Lookup)和删除(Drop)等功能。
+- **ExternalCatalog**：外部系统 Catalog，用来管理 Database、Table、Partition 和 Function 的接口。在Spark SQL中，具体实现有 **InMemoryCatalog** 和 **HiveExternalCatalog** 两种，前者将信息存储在内存中，一般用于测试或者比较简单的SQL处理；后者利用Hive元数据来实现持久化的管理，在生产环境中使用。
+
+### 4.4.2 Rule 体系
+
+**Rule** 是一个抽象类，子类需要复写 `apply(paln: TreeType)` 方法来制定特定的处理逻辑(TreeType 是一个范型)。在 Unresolved LogicalPlan 上的操作（绑定、优化等），主要方法都是基于 Rule 进行树结构的转换或者节点的改写。
+
+**RuleExecutor** 是用来驱动所有的 **Rule** 操作，所有涉及树形结构的转换过程（**Analyzer** 的绑定过程、**Optimizer** 的优化过程、PhysicalPlan 的生成过程）都需要有一个继承 RuleExecutor 的类来完成转换过程的驱动。
+
+**RuleExecutor** 包含了一个 `batches: Seq[Batch]` 对象, 每个 `Batch` 包含了一组 `Rule` 和一个 `Strategy`，`Strategy` 指定了这一组 `Rule`的迭代次数（`Once`一次，`FixedPoint` 多次）， `RuleExecutor.execute()`会按照 batches 的顺序和 batch 内的 Rules 顺序对传入的  plan里的节点进行迭代处理，处理逻辑由具体 Rule 子类实现。
+
+### 4.4.3 Analyzed LogicalPlan 生成过程
+
+**Analyzer** 继承了 **RuleExecutor**， 主要基于 **SessionCatalog** ，通过 **Rules** 将 Unresolved LogicalPlan 中的 **UnresolvedAttribute** 和 **UnresolvedRelation** 转换为 typed 对象。
+
+Analyzer 自定义了
+
+
+
+
+
+
+
+
 
 
 
