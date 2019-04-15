@@ -503,9 +503,9 @@ class SparkSqlParser(conf: SQLConf) extends AbstractSqlParser {
 
 在 Spark SQL 系统中，Catalog 主要用于各种函数资源信息和元数据信息（数据库、数据表、数据视图、数据分区和函数等）的统一管理。
 
-Spark SQL 中的 Catalog 体系实现以 **SessionCatalog** 为主体，通过 **SparkSession** 提供给外部调用。**SessionCatalog** 封装了底层的元数据信息、临时表信息、视图信息和函数信息。 
+Spark SQL 中的 **Catalog** 体系实现以 **SessionCatalog** 为主体，通过 **SparkSession** 提供给外部调用。**SessionCatalog** 封装了底层的元数据信息、临时表信息、视图信息和函数信息。 
 
-Catalog 包含以下几个对象：
+**Catalog** 包含以下几个对象：
 
 - **Configuration** ： Hadoop 的配置信息。
 - **SQLConf**：Spark SQL 的配置信息。
@@ -518,7 +518,7 @@ Catalog 包含以下几个对象：
 
 **Rule** 是一个抽象类，子类需要复写 `apply(paln: TreeType)` 方法来制定特定的处理逻辑(TreeType 是一个范型)。在 Unresolved LogicalPlan 上的操作（绑定、优化等），主要方法都是基于 Rule 进行树结构的转换或者节点的改写。
 
-**RuleExecutor** 是用来驱动所有的 **Rule** 操作，所有涉及树形结构的转换过程（**Analyzer** 的绑定过程、**Optimizer** 的优化过程、PhysicalPlan 的生成过程）都需要有一个继承 RuleExecutor 的类来完成转换过程的驱动。
+**RuleExecutor** 是用来驱动所有的 **Rule** 操作，所有涉及树形结构的转换过程（**Analyzer** 的绑定过程、**Optimizer** 的优化过程、**PhysicalPlan** 的生成过程）都需要有一个继承 **RuleExecutor** 的类来完成转换过程的驱动。
 
 **RuleExecutor** 包含了一个 `batches: Seq[Batch]` 对象, 每个 `Batch` 包含了一组 `Rule` 和一个 `Strategy`，`Strategy` 指定了这一组 `Rule`的迭代次数（`Once`一次，`FixedPoint` 多次）， `RuleExecutor.execute()`会按照 batches 的顺序和 batch 内的 Rules 顺序对传入的  plan里的节点进行迭代处理，处理逻辑由具体 Rule 子类实现。
 
