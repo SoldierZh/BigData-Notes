@@ -27,5 +27,3 @@ Pass in customized rules by such methods:
 - injectOptimizerRule – Adds Optimizer rules
 
 - injectPlannerStrategy – Adds physical planning strategy rules
-
-

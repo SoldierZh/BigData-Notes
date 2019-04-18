@@ -520,23 +520,39 @@ Spark SQL 中的 **Catalog** 体系实现以 **SessionCatalog** 为主体，通�
 
 **RuleExecutor** 是用来驱动所有的 **Rule** 操作，所有涉及树形结构的转换过程（**Analyzer** 的绑定过程、**Optimizer** 的优化过程、**PhysicalPlan** 的生成过程）都需要有一个继承 **RuleExecutor** 的类来完成转换过程的驱动。
 
-**RuleExecutor** 包含了一个 `batches: Seq[Batch]` 对象, 每个 `Batch` 包含了一组 `Rule` 和一个 `Strategy`，`Strategy` 指定了这一组 `Rule`的迭代次数（`Once`一次，`FixedPoint` 多次）， `RuleExecutor.execute()`会按照 batches 的顺序和 batch 内的 Rules 顺序对传入的  plan里的节点进行迭代处理，处理逻辑由具体 Rule 子类实现。
+**RuleExecutor** 包含了一个 `batches: Seq[Batch]` 对象（子类会覆盖这个方法，定义一系列规则）, 每个 `Batch` 包含了一组 `Rule` 和一个 `Strategy`，`Strategy` 指定了这一组 `Rule`的迭代次数（`Once`一次，`FixedPoint` 多次）， `RuleExecutor.execute()`会按照 batches 的顺序和 batch 内的 Rules 顺序对传入的  plan里的节点进行迭代处理，处理逻辑由具体 Rule 子类实现。
 
 ### 4.4.3 Analyzed LogicalPlan 生成过程
 
-**Analyzer** 继承了 **RuleExecutor**， 主要基于 **SessionCatalog** ，通过 **Rules** 将 Unresolved LogicalPlan 中的 **UnresolvedAttribute** 和 **UnresolvedRelation** 转换为 typed 对象。
+**Analyzer** 继承了 **RuleExecutor**， 主要基于 **SessionCatalog** ，通过 **Rules** 将 Unresolved LogicalPlan 中的 **UnresolvedAttribute** 和 **UnresolvedRelation** 等节点转换为 typed 节点。
 
-Analyzer 自定义了
+- Batch Substitution ： 替换操作 — fixedPoint
+  - CTESubstitution：当匹配到 `With(child, relations)` 节点时，会将多个 LogicalPlan 合并成一个 LogicalPlan。
+  - WindowsSubstitution：当匹配到 `WithWindowDefinition(windowDefinitions, child)` 节点时，将其子节点 `child` 中 `UnresolvedWindowExpression` 转换成 `WindowExpression`。
+  - EliminateUnions：当 Union 算子只有一个子节点，则需要消除该 Union 节点。
+  - SubstituteUnresolvedOrdinals：将 `Group By` 和 `Sort By` 后面的常数（列的下标）替换成 UnresolvedOrdinal 表达式，映射到对应的列。
+
+- Batch Resolution：包含的Rule涉及了常见的数据源、数据类型、数据转换和处理操作等 — fixedPoint
+  - ResolveTableValuedFunctions ，ResolveRelations，ResolveReferences，ResolveCreateNamedStruct，ResolveDeserializer，ResolveNewInstance，ResolveUpCast，ResolveGroupingAnalytics，ResolvePivot，ResolveOrdinalInOrderByAndGroupBy，ResolveAggAliasInGroupBy，ResolveMissingReferences，ExtractGenerator，ResolveGenerate，ResolveFunctions，ResolveAliases，ResolveSubquery，ResolveSubqueryColumnAliases，ResolveWindowOrder，ResolveWindowFrame，ResolveNaturalAndUsingJoin，ExtractWindowExpressions，GlobalAggregates，ResolveAggregateFunctions，TimeWindowing，ResolveInlineTables，ResolveTimeZone，ResolvedUuidExpressions，TypeCoercion.typeCoercionRules
+  - **extendedResolutionRules**：（拓展点）可以被覆盖，在Resolution的最后提供额外的rules。
+  > Override to provide additional rules for the "Resolution" batch.
+
+- Batch Post-Hoc Resolution  — Once (**拓展点**)
+> Override to provide rules to do post-hoc resolution. Note that these rules will be executed in an individual batch. This batch is to run right after the normal resolution batch and execute its rules in one pass.
+
+- Batch Nondeterministic：仅包含 PullOutNondeterministic 规则，主要用来将 Logical Plan 中非 Project或非 Filter 算子的 nondeterministic 表达式提取出来，然后将这些表达式放在内层的Project算子中或最终的Project算子中。
+- Batch UDF：仅包含 HandleNullInputsForUDF 规则，主要用来对用户自定义函数进行一些特别的处理，主要用来处理输入数据为Null的情形。
+- Batch FixNullability：仅包含 FixNullability 规则，用来统一设定 LogicalPlan中表达式的 nullable属性。
+- Batch Cleanup：只包含 CleanupAliases 规则，用来删除 LogicalPlan 中无用的别名信息，**逻辑算子中仅 Project、Aggregate 或 Window 算子的最高一层表达式（分别对应 project list、aggregate expression 和 window expression）才需要别名。**
+
+- **注意** ： Logical Plan的解析是一个自底向上，不断迭代的过程，可以通过参数 `spark.sql.optimizer.maxInterations` 设定 RuleExecutor 迭代的轮数。
 
 
+## 4.5 Optimizer 机制： LogicalPlan 优化过程
 
+也是基于 Rule 体系，即需要继承 `RuleExecutor`，完成对 Analyzed Logical Plan的优化。
 
-
-
-
-
-
-
+> RuleExecutor <= Optimizer <= SparkOptimizer
 
 
 
