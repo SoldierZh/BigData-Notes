@@ -339,7 +339,7 @@ SqlBaseBaseVisitor.java		SqlBaseListener.java	SqlBaseVisitor.java
 > Spark SQL Logical Plan 阶段主要分为三个步骤：
 >
 > - 由 **SparkSqlParser** 中的 **AstBuilder** 执行节点访问（从根节点开始递归调用），将语法树的各种Context节点转换成对应的 LogicalPlan 节点（访问者模式，将 Parser 解析的 Context 对象传入对应的 visit 方法中，完成 LogicalPlan 的生成并返回），从而成为一棵未解析的逻辑算子树（**Unresolved LogicalPlan**），此时 LogicalPlan 不包含数据信息与类信息。
-> - 由**Analyzed** 将一系列的规划作用在 Unresolved LogicalPlan 上，对树上的节点绑定各种数据信息，生成解析后的逻辑算子树，**Analyzed LogicalPlan** 。
+> - 由**Analyzer** 将一系列的规划作用在 Unresolved LogicalPlan 上，对树上的节点绑定各种数据信息，生成解析后的逻辑算子树，**Analyzed LogicalPlan** 。
 > - 由**Optimiter** 将一系列优化规则作用到上一步生成的 LogicalPlan 树中，在确保结果正确的前提下改写其中的低效结构，生成优化之后的逻辑算子树，**Optimized LogicalPlan**。
 
 ## 4.1 QueryPlan 基本信息
